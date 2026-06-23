@@ -16,6 +16,12 @@ local RcStatus = {
     ABSENT = 3,
 }
 
+local status_map = {
+    [0] = RcStatus.ALLOWED,
+    [1] = RcStatus.BLOCKED,
+    [2] = RcStatus.DENIED,
+}
+
 --- Notify status of .envrc
 ---@param rc_status RcStatus
 local notify_rc_status = function(rc_status)
@@ -43,13 +49,7 @@ local function get_rc_status(dir)
     end
 
     local _rc_status = found_rc.allowed
-    for _, value in pairs(RcStatus) do
-        if _rc_status == value then
-            return value
-        end
-    end
-
-    return RcStatus.ABSENT
+    return status_map[_rc_status] or RcStatus.ABSENT
 end
 
 --- Get env variables and update
