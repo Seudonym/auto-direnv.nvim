@@ -1,5 +1,13 @@
 local M = {}
 
+--- @class AutoDirenvConfig
+--- @field silent? boolean
+
+--- @type AutoDirenvConfig
+local default_config = {
+    silent = false,
+}
+
 --- @enum RcStatus
 local RcStatus = {
     ALLOWED = 0,
@@ -11,13 +19,15 @@ local RcStatus = {
 --- Notify status of .envrc
 ---@param rc_status RcStatus
 local notify_rc_status = function(rc_status)
+    local message = nil
     if rc_status == RcStatus.ALLOWED then
-        vim.notify(".envrc was found in this directory. Loading direnv", vim.log.levels.INFO)
+        message = "envrc was found in this directory. Loading direnv"
     elseif rc_status == RcStatus.BLOCKED then
-        vim.notify(".envrc was found in this directory but it has not been allowed", vim.log.levels.INFO)
+        message = ".envrc was found in this directory but it has not been allowed"
     elseif rc_status == RcStatus.DENIED then
-        vim.notify(".envrc was found in this directory but it has been explicity blocked", vim.log.levels.INFO)
+        message = ".envrc was found in this directory but it has been explicity blocked"
     end
+    vim.notify(message, vim.log.levels.INFO)
 end
 
 --- Checks direnv status and returns the corresponding enum value
@@ -63,22 +73,21 @@ local update_env = function(dir)
     end
 end
 
-M.setup = function()
+---@param opts? AutoDirenvConfig
+M.setup = function(opts)
+    local config = vim.tbl_deep_extend("force", default_config, opts or {})
     local group = vim.api.nvim_create_augroup("DirenvChecker", { clear = true })
     vim.api.nvim_create_autocmd({ "VimEnter", "DirChanged" }, {
         group = group,
         callback = function(args)
             local target_dir = args.event == "VimEnter" and vim.fn.getcwd() or args.file
-
             local rc_status = get_rc_status(target_dir)
-            if rc_status == RcStatus.ABSENT then
-                update_env(target_dir)
-                return
+
+            if not config.silent and rc_status ~= RcStatus.ABSENT then
+                notify_rc_status(rc_status)
             end
 
-            notify_rc_status(rc_status)
-
-            if rc_status == RcStatus.ALLOWED then
+            if rc_status == RcStatus.ABSENT or rc_status == RcStatus.ALLOWED then
                 update_env(target_dir)
             end
         end,
